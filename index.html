@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Värmefläkt">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.json">
+  <title>Värmefläkt</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0f172a;
+      --card: #1e293b;
+      --accent: #22c55e;
+      --accent-dark: #16a34a;
+      --danger: #ef4444;
+      --danger-dark: #dc2626;
+      --text: #f1f5f9;
+      --text-dim: #94a3b8;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      min-height: 100dvh;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0 0 32px;
+      text-align: center;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 28px;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    button {
+      width: 100%;
+      font-size: 19px;
+      font-weight: 600;
+      padding: 20px;
+      margin-bottom: 14px;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.05s ease, opacity 0.2s ease;
+    }
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.5; }
+    #startBtn { background: var(--accent); color: #052e14; }
+    #startBtn:active { background: var(--accent-dark); }
+    #stopBtn { background: var(--danger); color: #2e0505; }
+    #stopBtn:active { background: var(--danger-dark); }
+    #status {
+      margin-top: 8px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 14px;
+      min-height: 20px;
+    }
+    .settings-toggle {
+      margin-top: 24px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13px;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .settings {
+      display: none;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #334155;
+    }
+    .settings.open { display: block; }
+    .settings label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    .settings input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: var(--text);
+      font-size: 15px;
+      margin-bottom: 12px;
+    }
+    .settings .save {
+      background: #334155;
+      color: var(--text);
+      padding: 12px;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Värmefläkt / sug</h1>
+  <div class="card">
+    <button id="startBtn">Sug 40% i 3 timmar</button>
+    <button id="stopBtn">Stäng av nu</button>
+    <div id="status"></div>
+    <div class="settings-toggle" id="settingsToggle">Inställningar</div>
+    <div class="settings" id="settingsPanel">
+      <label for="ipInput">Shellyns IP-adress</label>
+      <input id="ipInput" type="text" placeholder="192.168.68.109">
+      <label for="pctInput">Sugnivå (%)</label>
+      <input id="pctInput" type="number" min="1" max="100" placeholder="40">
+      <label for="hoursInput">Antal timmar</label>
+      <input id="hoursInput" type="number" min="0.1" max="24" step="0.1" placeholder="3">
+      <button class="save" id="saveBtn">Spara</button>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULTS = { ip: "192.168.68.109", pct: 40, hours: 3 };
+
+    function getSettings() {
+      return {
+        ip: localStorage.getItem("shelly_ip") || DEFAULTS.ip,
+        pct: parseInt(localStorage.getItem("shelly_pct") || DEFAULTS.pct, 10),
+        hours: parseFloat(localStorage.getItem("shelly_hours") || DEFAULTS.hours)
+      };
+    }
+
+    function setStatus(text) {
+      document.getElementById("status").innerText = text;
+    }
+
+    // Fires a request to the Shelly without triggering a mixed-content block:
+    // opens a top-level navigation in a throwaway tab (allowed even from an
+    // https page calling an http device), then closes it a moment later.
+    function callShelly(url) {
+      const win = window.open(url, "_blank");
+      if (!win) {
+        setStatus("Kunde inte öppna anrop – tillåt popupfönster för denna sida.");
+        return;
+      }
+      setTimeout(() => { try { win.close(); } catch (e) {} }, 900);
+    }
+
+    document.getElementById("startBtn").addEventListener("click", () => {
+      const { ip, pct, hours } = getSettings();
+      const seconds = Math.round(hours * 3600);
+      const url = `http://${ip}/rpc/Light.Set?id=0&on=true&brightness=${pct}&toggle_after=${seconds}`;
+      callShelly(url);
+      setStatus(`Startad på ${pct}% – stängs av automatiskt om ${hours} h.`);
+    });
+
+    document.getElementById("stopBtn").addEventListener("click", () => {
+      const { ip } = getSettings();
+      const url = `http://${ip}/rpc/Light.Set?id=0&on=false`;
+      callShelly(url);
+      setStatus("Avstängd.");
+    });
+
+    const toggle = document.getElementById("settingsToggle");
+    const panel = document.getElementById("settingsPanel");
+    toggle.addEventListener("click", () => panel.classList.toggle("open"));
+
+    const ipInput = document.getElementById("ipInput");
+    const pctInput = document.getElementById("pctInput");
+    const hoursInput = document.getElementById("hoursInput");
+    const s = getSettings();
+    ipInput.value = s.ip;
+    pctInput.value = s.pct;
+    hoursInput.value = s.hours;
+
+    document.getElementById("saveBtn").addEventListener("click", () => {
+      if (ipInput.value.trim()) localStorage.setItem("shelly_ip", ipInput.value.trim());
+      if (pctInput.value) localStorage.setItem("shelly_pct", pctInput.value);
+      if (hoursInput.value) localStorage.setItem("shelly_hours", hoursInput.value);
+      setStatus("Inställningar sparade.");
+      panel.classList.remove("open");
+    });
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("service-worker.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
