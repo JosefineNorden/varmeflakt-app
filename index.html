@@ -125,7 +125,7 @@
     <div class="settings-toggle" id="settingsToggle">Inställningar</div>
     <div class="settings" id="settingsPanel">
       <label for="ipInput">Shellyns IP-adress</label>
-      <input id="ipInput" type="text" placeholder="192.168.68.109">
+      <input id="ipInput" type="text" placeholder="192.168.68.100">
       <label for="pctInput">Sugnivå (%)</label>
       <input id="pctInput" type="number" min="1" max="100" placeholder="40">
       <label for="hoursInput">Antal timmar</label>
@@ -135,7 +135,7 @@
   </div>
 
   <script>
-    const DEFAULTS = { ip: "192.168.68.109", pct: 40, hours: 3 };
+    const DEFAULTS = { ip: "192.168.68.100", pct: 40, hours: 3 };
 
     function getSettings() {
       return {
